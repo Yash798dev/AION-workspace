@@ -223,6 +223,36 @@ function renderInputArea() {
   <button class="scroll-bottom-btn" id="scrollBottomBtn" onclick="scrollToBottom()">↓</button>`;
 }
 
+// ── BOTTOM NAV (mobile ≤767px restructured nav — not a shrunk desktop nav) ──
+function renderBottomNav() {
+  return `
+  <nav class="bottom-nav" id="bottomNav" aria-label="Mobile navigation">
+    <button class="bottom-nav-btn active" id="bnHome" onclick="bottomNavSelect('home')" aria-label="Home">
+      <span class="nav-icon">🏠</span><span>Home</span>
+    </button>
+    <button class="bottom-nav-btn" id="bnChats" onclick="bottomNavSelect('chats')" aria-label="Chats">
+      <span class="nav-icon">💬</span><span>Chats</span>
+    </button>
+    <button class="bottom-nav-btn" id="bnNew" onclick="newChat(); bottomNavSelect('home')" aria-label="New chat">
+      <span class="nav-icon">✏️</span><span>New</span>
+    </button>
+    <button class="bottom-nav-btn" id="bnHelpers" onclick="bottomNavSelect('helpers'); openModal('helpers')" aria-label="AI Helpers">
+      <span class="nav-icon">🤖</span><span>Helpers</span>
+    </button>
+    <button class="bottom-nav-btn" id="bnSettings" onclick="bottomNavSelect('settings'); openModal('settings')" aria-label="Settings">
+      <span class="nav-icon">⚙️</span><span>Settings</span>
+    </button>
+  </nav>`;
+}
+
+function bottomNavSelect(tab) {
+  document.querySelectorAll('.bottom-nav-btn').forEach(b => b.classList.remove('active'));
+  const map = { home: 'bnHome', chats: 'bnChats', new: 'bnNew', helpers: 'bnHelpers', settings: 'bnSettings' };
+  if (map[tab]) document.getElementById(map[tab])?.classList.add('active');
+  // 'chats' tab opens the sidebar drawer
+  if (tab === 'chats') toggleSidebar();
+}
+
 // ── INITIALIZATION ──
 function buildApp() {
   document.getElementById('app').innerHTML = `
@@ -240,7 +270,8 @@ function buildApp() {
       <div class="split-panel-body" id="splitPanelBody"></div>
     </div>
     <div class="modal-overlay" id="modalOverlay" onclick="handleOverlayClick(event)"><div class="modal" id="modal"></div></div>
-    <div class="toast-container" id="toastContainer"></div>`;
+    <div class="toast-container" id="toastContainer"></div>
+    ${renderBottomNav()}`;
   attachKeyboardShortcuts();
   checkOnlineStatus();
   loadPreferences();
@@ -250,7 +281,8 @@ function buildApp() {
 function toggleSidebar() {
   const sidebar = document.getElementById('sidebar');
   const overlay = document.getElementById('sidebarOverlay');
-  if (window.innerWidth <= 768) {
+  // Mobile breakpoint: 767px (matches CSS max-width: 767px)
+  if (window.innerWidth <= 767) {
     state.sidebarOpen = sidebar.classList.toggle('open');
     overlay.classList.toggle('open', state.sidebarOpen);
     sidebar.classList.remove('collapsed');
@@ -262,10 +294,13 @@ function toggleSidebar() {
   }
 }
 function closeSidebar() {
-  if (window.innerWidth <= 768) {
+  if (window.innerWidth <= 767) {
     state.sidebarOpen = false;
     document.getElementById('sidebar').classList.remove('open');
     document.getElementById('sidebarOverlay').classList.remove('open');
+    // Deselect "Chats" bottom nav tab after drawer closes
+    document.querySelectorAll('.bottom-nav-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('bnHome')?.classList.add('active');
   }
 }
 
@@ -425,6 +460,15 @@ function openModal(type) {
       <div class="modal-body">${['PDF Document','Markdown','Share Link'].map(fmt=>`<div class="setting-row" style="cursor:pointer;padding:12px;background:var(--bg-tertiary);border-radius:var(--radius-md);border:1px solid var(--border)" onclick="closeModal();showToast('Exporting ${fmt}','success')"><div class="setting-label">${fmt}</div></div>`).join('')}</div>`;
   } else if (type === 'keyboard') {
     modal.innerHTML = `<div class="modal-header"><div class="modal-title">⌨ Shortcuts</div><button class="modal-close" onclick="closeModal()">×</button></div><div class="modal-body"><div class="shortcut-grid">${[['New chat',['Ctrl','N']],['Search',['Ctrl','K']],['Settings',['Ctrl',',']],['Voice',['Ctrl','M']]].map(([d,k])=>`<div class="shortcut-item"><span class="shortcut-desc">${d}</span><span class="shortcut-keys">${k.map(x=>`<kbd>${x}</kbd>`).join('+')}</span></div>`).join('')}</div></div>`;
+  } else if (type === 'helpers') {
+    /* Mobile bottom-nav "Helpers" — equivalent of sidebar AI Helper list */
+    modal.innerHTML = `
+      <div class="modal-header"><div class="modal-title">🤖 AI Helpers</div><button class="modal-close" onclick="closeModal()">×</button></div>
+      <div class="modal-body">${state.aiHelpers.map(h=>`
+        <div class="setting-row" style="cursor:pointer;padding:12px;background:${state.currentHelper===h.id?'rgba(59,130,246,0.12)':'var(--bg-tertiary)'};border-radius:var(--radius-md);border:1px solid ${state.currentHelper===h.id?'var(--accent-indigo)':'var(--border)'};margin-bottom:8px" onclick="setHelper('${h.id}');closeModal()">
+          <div><div class="setting-label">${h.icon} ${h.name}</div><div class="setting-desc">${h.desc}</div></div>
+          ${state.currentHelper===h.id?'<span style="color:var(--accent-indigo)">✓</span>':''}
+        </div>`).join('')}</div>`;
   }
   overlay.classList.add('open');
 }
